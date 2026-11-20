@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google Maps Place Links Generator</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 650px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      line-height: 1.5;
+    }
+    textarea {
+      width: 100%;
+      height: 160px;
+      padding: 0.75rem;
+      font-size: 1rem;
+      box-sizing: border-box;
+      margin-bottom: 1rem;
+    }
+    .button-group {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    button {
+      background-color: #1a73e8;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #1557b0;
+    }
+    #downloadBtn {
+      background-color: #0b8043;
+      display: none;
+    }
+    #downloadBtn:hover {
+      background-color: #086635;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin-top: 1.5rem;
+    }
+    li {
+      margin-bottom: 0.75rem;
+      padding: 0.85rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+    .branch-info {
+      display: flex;
+      flex-direction: column;
+    }
+    .branch-name {
+      font-weight: 600;
+      font-size: 1.05rem;
+      color: #202124;
+    }
+    .branch-address {
+      font-size: 0.9rem;
+      color: #5f6368;
+    }
+    a {
+      background-color: #34a853;
+      color: white;
+      text-decoration: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      white-space: nowrap;
+      font-weight: 500;
+    }
+    a:hover {
+      background-color: #2d8e47;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Google Maps Place Links Generator</h2>
+  <p>Enter one branch per line using the format <strong>Branch Name | Address</strong> (or just the address):</p>
+  
+  <textarea id="addressInput" placeholder="Pacifica Office | 100 Esplanade Ave, Pacifica, CA 94044&#10;Del Mar Branch | 516 Del Mar Ave, Pacifica, CA 94044"></textarea>
+  
+  <div class="button-group">
+    <button id="generateBtn">Generate Place Links</button>
+    <button id="downloadBtn">Download "Branch Links.html"</button>
+  </div>
+
+  <ul id="linkList"></ul>
+
+  <script>
+    var generatedItems = [];
+
+    document.getElementById('generateBtn').addEventListener('click', function() {
+      var rawText = document.getElementById('addressInput').value;
+      var linkList = document.getElementById('linkList');
+      var downloadBtn = document.getElementById('downloadBtn');
+      
+      linkList.innerHTML = '';
+      generatedItems = [];
+
+      var lines = rawText
+        .split('\n')
+        .map(function(line) { return line.trim(); })
+        .filter(function(line) { return line.length > 0; });
+
+      lines.forEach(function(line, index) {
+        var branchName = '';
+        var address = '';
+
+        // Check if line contains a '|' separator
+        var pipeIndex = line.indexOf('|');
+        if (pipeIndex !== -1) {
+          branchName = line.substring(0, pipeIndex).trim();
+          address = line.substring(pipeIndex + 1).trim();
+        } else {
+          address = line;
+        }
+
+        // Skip if address is empty after splitting
+        if (!address) return;
+
+        // Format address into Google Maps /maps/place/ URL
+        var formattedAddress = encodeURIComponent(address).replace(/%20/g, '+').replace(/%2C/g, ',');
+        var mapsUrl = 'https://google.com/maps/place/' + formattedAddress;
+
+        generatedItems.push({ branchName: branchName, address: address, url: mapsUrl });
+
+        var listItem = document.createElement('li');
+        var infoDiv = document.createElement('div');
+        infoDiv.className = 'branch-info';
+
+        if (branchName) {
+          var nameSpan = document.createElement('span');
+          nameSpan.className = 'branch-name';
+          nameSpan.textContent = (index + 1) + '. ' + branchName;
+
+          var addrSpan = document.createElement('span');
+          addrSpan.className = 'branch-address';
+          addrSpan.textContent = address;
+
+          infoDiv.appendChild(nameSpan);
+          infoDiv.appendChild(addrSpan);
+        } else {
+          var fallbackSpan = document.createElement('span');
+          fallbackSpan.className = 'branch-name';
+          fallbackSpan.textContent = (index + 1) + '. ' + address;
+          infoDiv.appendChild(fallbackSpan);
+        }
+
+        var navLink = document.createElement('a');
+        navLink.href = mapsUrl;
+        navLink.textContent = 'View Place';
+        navLink.target = '_blank';
+        navLink.rel = 'noopener noreferrer';
+
+        listItem.appendChild(infoDiv);
+        listItem.appendChild(navLink);
+        linkList.appendChild(listItem);
+      });
+
+      downloadBtn.style.display = generatedItems.length > 0 ? 'inline-block' : 'none';
+    });
+
+    document.getElementById('downloadBtn').addEventListener('click', function() {
+      if (generatedItems.length === 0) return;
+
+      function escapeHtml(text) {
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      var listItemsHtml = generatedItems.map(function(item, index) {
+        var infoHtml = '';
+        if (item.branchName) {
+          infoHtml = '      <div class="branch-info">\n' +
+                     '        <span class="branch-name">' + (index + 1) + '. ' + escapeHtml(item.branchName) + '</span>\n' +
+                     '        <span class="branch-address">' + escapeHtml(item.address) + '</span>\n' +
+                     '      </div>\n';
+        } else {
+          infoHtml = '      <div class="branch-info">\n' +
+                     '        <span class="branch-name">' + (index + 1) + '. ' + escapeHtml(item.address) + '</span>\n' +
+                     '      </div>\n';
+        }
+
+        return '    <li>\n' +
+               infoHtml +
+               '      <a href="' + item.url + '" target="_blank" rel="noopener noreferrer">View Place</a>\n' +
+               '    </li>';
+      }).join('\n');
+
+      var standaloneHtml = [
+        '<!DOCTYPE html>',
+        '<html lang="en">',
+        '<head>',
+        '  <meta charset="UTF-8">',
+        '  <meta name="viewport" content="width=device-width, initial-scale=1.0">',
+        '  <title>Branch Links</title>',
+        '  <style>',
+        '    body { font-family: system-ui, -apple-system, sans-serif; max-width: 650px; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }',
+        '    ul { list-style: none; padding: 0; }',
+        '    li { margin-bottom: 0.75rem; padding: 0.85rem; border: 1px solid #ddd; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; gap: 1rem; }',
+        '    .branch-info { display: flex; flex-direction: column; }',
+        '    .branch-name { font-weight: 600; font-size: 1.05rem; color: #202124; }',
+        '    .branch-address { font-size: 0.9rem; color: #5f6368; }',
+        '    a { background-color: #34a853; color: white; text-decoration: none; padding: 0.5rem 1rem; border-radius: 4px; white-space: nowrap; font-weight: 500; }',
+        '    a:hover { background-color: #2d8e47; }',
+        '  </style>',
+        '</head>',
+        '<body>',
+        '  <h2>Branch Place Links</h2>',
+        '  <ul>',
+        listItemsHtml,
+        '  </ul>',
+        '<' + '/body>',
+        '<' + '/html>'
+      ].join('\n');
+
+      var blob = new Blob([standaloneHtml], { type: 'text/html;charset=utf-8' });
+      var downloadUrl = URL.createObjectURL(blob);
+      var tempLink = document.createElement('a');
+      
+      tempLink.href = downloadUrl;
+      tempLink.download = 'Branch Links.html';
+      document.body.appendChild(tempLink);
+      tempLink.click();
+      
+      document.body.removeChild(tempLink);
+      URL.revokeObjectURL(downloadUrl);
+    });
+  </script>
+
+</body>
+</html>
